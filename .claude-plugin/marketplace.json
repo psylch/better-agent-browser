@@ -1,0 +1,20 @@
+{
+  "name": "psylch-better-agent-browser",
+  "owner": {
+    "name": "psylch"
+  },
+  "metadata": {
+    "description": "Parallel tabs, CAPTCHA detection, and site experience for agent-browser"
+  },
+  "plugins": [
+    {
+      "name": "better-agent-browser",
+      "source": "./",
+      "description": "Enhanced browser automation: parallel multi-tab CDP proxy, CAPTCHA watchdog, per-domain site experience. Extends agent-browser CLI with batch capabilities.",
+      "version": "0.1.0",
+      "category": "automation",
+      "tags": ["browser", "cdp", "parallel", "captcha", "agent-browser"],
+      "homepage": "https://github.com/psylch/better-agent-browser"
+    }
+  ]
+}

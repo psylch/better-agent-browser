@@ -1,0 +1,12 @@
+{
+  "name": "better-agent-browser",
+  "description": "Enhanced browser automation: parallel tabs via CDP proxy, CAPTCHA detection, site experience accumulation. Extends agent-browser CLI.",
+  "version": "0.1.0",
+  "author": {
+    "name": "psylch"
+  },
+  "homepage": "https://github.com/psylch/better-agent-browser",
+  "repository": "https://github.com/psylch/better-agent-browser",
+  "license": "MIT",
+  "keywords": ["browser", "automation", "cdp", "parallel", "captcha", "agent-browser"]
+}
