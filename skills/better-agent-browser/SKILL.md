@@ -50,9 +50,9 @@ agent-browser click @e3
 agent-browser screenshot page.png
 ```
 
-### 0b: Login / anti-bot needed
+### 0b: External sites
 
-Connect to the user's real Chrome. Clean fingerprint (`navigator.webdriver=false`), existing cookies and login state.
+Connect to the **agent's dedicated Chrome profile** at `~/.chrome-debug-profile`. This is a persistent profile — login state, cookies, and site data survive across sessions and agents. Once the user logs into a site here, it stays logged in for all future agent sessions.
 
 ```bash
 agent-browser connect 9333
@@ -61,6 +61,8 @@ agent-browser snapshot -i
 ```
 
 Connection persists — subsequent commands don't need `--cdp` or `connect` again.
+
+**Default assumption: already logged in.** This profile accumulates login state over time. Navigate to the target page directly — don't pre-check login. Only if you hit a login wall, escalate to Layer 1's login-watch.
 
 **Tab management:**
 
@@ -72,13 +74,13 @@ agent-browser tab close          # Close current tab
 agent-browser get url            # Which tab am I on?
 ```
 
-**Tab discipline:** Don't touch user's existing tabs. Work in tabs you create (`tab new` / `open`). Close your tabs when done.
+**Tab discipline:** Don't touch existing tabs. Work in tabs you create (`tab new` / `open`). Close your tabs when done.
 
-**First-time Chrome setup** (when no debug port is running):
+**First-time Chrome setup** (once per machine boot, when debug port is not running):
 
 ```bash
 # 1. Quit Chrome (Cmd+Q)
-# 2. Restart with debug port
+# 2. Start the agent's dedicated Chrome profile
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
   --remote-debugging-port=9333 '--remote-allow-origins=*' \
   --user-data-dir="$HOME/.chrome-debug-profile" 2>/dev/null &
@@ -87,7 +89,7 @@ agent-browser get url            # Which tab am I on?
 curl -s http://127.0.0.1:9333/json/version
 ```
 
-Port 9222 is often occupied by Electron — prefer **9333**. Login state persists in `~/.chrome-debug-profile`.
+Port 9222 is often occupied by Electron — prefer **9333**.
 
 **Get CDP port programmatically:**
 
