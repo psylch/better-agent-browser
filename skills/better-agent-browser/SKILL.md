@@ -54,15 +54,27 @@ agent-browser screenshot page.png
 
 Connect to the **agent's dedicated Chrome profile** at `~/.chrome-debug-profile`. This is a persistent profile — login state, cookies, and site data survive across sessions and agents. Once the user logs into a site here, it stays logged in for all future agent sessions.
 
+**Use `browser-connect.sh` to connect safely** — it checks if another agent is already using Layer 0b and auto-routes to Layer 2 if so:
+
 ```bash
-agent-browser connect 9333
+RESULT=$(bash ${SKILL_PATH}/scripts/browser-connect.sh 9333)
+MODE=$(echo "$RESULT" | jq -r '.mode')
+```
+
+| `mode` | Meaning | Action |
+|--------|---------|--------|
+| `layer0b` | Lock acquired, connected | Use `agent-browser` normally |
+| `layer2` | Another agent holds the lock | Use CDP proxy (Layer 2) instead |
+| `unavailable` | Chrome not running | Guide user to start Chrome |
+
+After connecting:
+
+```bash
 agent-browser open https://github.com/settings
 agent-browser snapshot -i
 ```
 
-Connection persists — subsequent commands don't need `--cdp` or `connect` again.
-
-**Default assumption: already logged in.** This profile accumulates login state over time. Navigate to the target page directly — don't pre-check login. Only if you hit a login wall, escalate to Layer 1's login-watch.
+**Default assumption: already logged in.** This profile accumulates login state over time. Navigate directly — don't pre-check login. Only escalate to Layer 1's login-watch if you hit a login wall.
 
 **Tab management:**
 
@@ -75,6 +87,12 @@ agent-browser get url            # Which tab am I on?
 ```
 
 **Tab discipline:** Don't touch existing tabs. Work in tabs you create (`tab new` / `open`). Close your tabs when done.
+
+**When done, always disconnect** to release the lock for other agents:
+
+```bash
+bash ${SKILL_PATH}/scripts/browser-disconnect.sh 9333
+```
 
 **First-time Chrome setup** (once per machine boot, when debug port is not running):
 
@@ -290,6 +308,8 @@ Full API: `references/api.md`.
 
 | Script | Purpose | Layer | Run in background? |
 |--------|---------|-------|-------------------|
+| `browser-connect.sh [PORT]` | Safe connect with lock-based conflict detection | 0b | No |
+| `browser-disconnect.sh [PORT]` | Release lock and close browser | 0b | No |
 | `check-deps.sh [PORT]` | Environment diagnostics | 0+ | No |
 | `login-watch.sh --interval N --timeout N` | Poll until login wall disappears | 1 | **Yes** |
 | `captcha-watch.sh --cdp PORT` | Detect CAPTCHA/automation block | 1 | Polling loop: yes |
