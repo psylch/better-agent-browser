@@ -1,29 +1,26 @@
-# Cloudflare (Turnstile / Challenge)
+---
+domain: cloudflare.com
+aliases: [Cloudflare, Turnstile, cf-turnstile]
+requires_cdp: true
+updated: 2026-03-29
+---
 
-## Anti-Bot
+## Platform Characteristics
 
-- Cloudflare Turnstile: yes
-- **Requires CDP mode**: YES — Playwright browsers (navigator.webdriver=true) are always blocked. Even manual solving fails because the browser fingerprint is rejected.
+- Cloudflare Turnstile is a challenge system, not a specific site
+- Playwright browsers (`navigator.webdriver=true`) are ALWAYS blocked — even manual solving fails because the browser fingerprint is rejected
+- Real Chrome with clean fingerprint: initial challenge auto-resolves in 3-5 seconds
 
-## Detection
+## Effective Patterns
 
-Snapshot contains: "Verify you are human", "Just a moment", "cf-turnstile"
+- After navigation in CDP mode, wait 5 seconds before checking snapshot (2026-03-29)
+- Once resolved, page redirects automatically (2026-03-29)
+- Repeated visits from same IP may reduce challenge frequency (2026-03-29)
 
-## Behavior
+**Detection keywords in snapshot:** "Verify you are human", "Just a moment", "cf-turnstile"
 
-- Initial challenge: 3-5 second wait, then auto-resolves if browser fingerprint is clean (real Chrome)
-- Playwright/automation browsers: ALWAYS blocked, no workaround
-- If blocked in real Chrome: shows interactive CAPTCHA widget
-- Repeated visits from same IP may reduce challenge frequency
+## Known Traps
 
-## Strategy
-
-1. **Pre-check**: If current mode is session (not CDP), ABORT and tell agent to switch to CDP mode. Do not attempt navigation.
-2. After navigation in CDP mode, wait 5 seconds before checking snapshot
-3. If "Just a moment" still present after 5s, CAPTCHA is interactive — screenshot + notify user
-4. Do NOT click the Turnstile checkbox programmatically (triggers harder challenge)
-5. Once resolved, page usually redirects automatically
-
-## Last Verified
-
-2026-03-29
+- Do NOT click the Turnstile checkbox programmatically — triggers harder challenge (2026-03-29)
+- If "Just a moment" still present after 5s, CAPTCHA is interactive — screenshot + notify user (2026-03-29)
+- Session mode (`--session`): ALWAYS blocked, no workaround. Must use real Chrome (2026-03-29)

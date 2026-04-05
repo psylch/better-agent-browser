@@ -1,27 +1,22 @@
-# {domain}
+---
+domain: {domain}
+aliases: []
+requires_cdp: false
+updated: YYYY-MM-DD
+---
 
-## Scroll Container
+## Platform Characteristics
 
-- Default `window.scrollTo()` works: yes/no
-- Actual scroll container: `{selector}`
+- Content loading: static / SPA / infinite scroll
+- Anti-bot: Cloudflare / hCaptcha / reCAPTCHA / none
+- Login required for target content: yes / no
+- `window.scrollTo()` works: yes / no (if no, specify scroll container selector)
 
-## Anti-Bot
+## Effective Patterns
 
-- Cloudflare Turnstile: yes/no
-- Login required: yes/no
-- Rate limiting: notes
-- **Requires CDP mode**: yes/no (if yes, session mode will be blocked by automation detection)
+Verified URL patterns, working selectors, operation strategies.
+Tag each with discovery date.
 
-## Known Selectors
+## Known Traps
 
-| Element | Selector | Notes |
-|---------|----------|-------|
-| ... | ... | ... |
-
-## Gotchas
-
-- ...
-
-## Last Verified
-
-YYYY-MM-DD
+What fails and why. Tag each with discovery date.

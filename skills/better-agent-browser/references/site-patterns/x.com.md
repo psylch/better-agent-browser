@@ -1,19 +1,23 @@
-# x.com (Twitter/X)
+---
+domain: x.com
+aliases: [Twitter, X, twitter.com]
+requires_cdp: true
+updated: 2026-03-29
+---
 
-## Scroll Container
+## Platform Characteristics
 
-- `window.scrollTo()` does NOT work for feed scrolling
-- Main feed scroll container: `main[role="main"]` or the first scrollable child of `[data-testid="primaryColumn"]`
-- Use: `document.querySelector('[data-testid="primaryColumn"]').scrollBy(0, 1000)`
-
-## Anti-Bot
-
+- SPA with infinite scroll
+- `window.scrollTo()` does NOT work for feed — custom scroll container
+- DOM class names are hashed/obfuscated — never rely on class selectors
 - Aggressive rate limiting on unauthenticated requests
-- Login wall appears after ~2-3 pages of browsing without login
+- Login wall appears after ~2-3 pages without login
 - Cloudflare Turnstile on login page
-- **Requires CDP mode**: YES for any authenticated operations
 
-## Known Selectors
+## Effective Patterns
+
+- Scroll container: `document.querySelector('[data-testid="primaryColumn"]').scrollBy(0, 1000)` (2026-03-29)
+- Use `data-testid` attributes or snapshot refs exclusively (2026-03-29)
 
 | Element | Selector | Notes |
 |---------|----------|-------|
@@ -23,15 +27,10 @@
 | Retweet button | `[data-testid="retweet"]` | |
 | Reply button | `[data-testid="reply"]` | |
 | Search input | `[data-testid="SearchBox_Search_Input"]` | |
-| Grok input | Varies, use snapshot ref | Changes frequently |
+| Grok input | Varies, use snapshot ref | Changes frequently (2026-03-29) |
 
-## Gotchas
+## Known Traps
 
-- DOM class names are hashed/obfuscated — never rely on class selectors
-- Use `data-testid` attributes or snapshot refs exclusively
-- Infinite scroll: new tweets load as you scroll, old ones get removed from DOM
-- Image lazy loading: screenshots may show placeholders if taken too fast
-
-## Last Verified
-
-2026-03-29
+- Infinite scroll: old tweets removed from DOM as new ones load (2026-03-29)
+- Image lazy loading: screenshots may show placeholders if taken too fast (2026-03-29)
+- Grok input selector changes frequently — always use snapshot refs (2026-03-29)
