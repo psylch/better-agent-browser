@@ -35,6 +35,16 @@ Always start at Layer 0. Escalate only when you hit a specific problem.
 
 ---
 
+## Hard Rules (read first)
+
+1. **Default to headless.** Unless the task needs a visible window for one-time interactive login, run Chrome headless (`--headless=new`). The agent profile at `~/.chrome-debug-profile` already persists login state, so routine work doesn't need a GUI window.
+2. **macOS: NEVER use `open -a "Google Chrome"`.** `open -a` foregrounds Chrome and steals focus from the user's active window on every navigation. Launch the binary directly (see Layer 0b setup).
+3. **Browser is a singleton resource.** Port `9333` + `~/.chrome-debug-profile` can only be held by one process at a time. Use `browser-connect.sh` — it acquires a lock and auto-routes collisions to Layer 2 (CDP proxy). Never launch a second Chrome against the same `user-data-dir`.
+4. **Do NOT naively parallelize browser-using subagents.** If you dispatch a pool of subagents and only one is *supposed* to touch the browser, explicitly tell the others NOT to load this skill. If multiple subagents legitimately need the browser, route them all through one Layer 2 CDP proxy.
+5. **Project-local `CLAUDE.md` recipes are site-specific.** E.g., a Canvas recipe saying `open -a` + visible window exists because CAS SSO needs a GUI. Do NOT generalize that to unrelated tasks — headless is the default.
+
+---
+
 ## Layer 0: Direct agent-browser
 
 **Do you need the user's login state or need to bypass anti-bot?**
@@ -97,17 +107,24 @@ bash ${SKILL_PATH}/scripts/browser-disconnect.sh 9333
 **First-time Chrome setup** (once per machine boot, when debug port is not running):
 
 ```bash
-# 1. Quit Chrome (Cmd+Q)
-# 2. Start the agent's dedicated Chrome profile
+# 1. Quit Chrome (Cmd+Q) if it owns the Default profile you want to borrow later
+# 2. Start the agent's dedicated Chrome profile — HEADLESS by default
 /Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+  --headless=new --disable-gpu \
   --remote-debugging-port=9333 '--remote-allow-origins=*' \
-  --user-data-dir="$HOME/.chrome-debug-profile" 2>/dev/null &
+  --user-data-dir="$HOME/.chrome-debug-profile" \
+  --no-first-run --no-default-browser-check 2>/dev/null &
 
 # 3. Verify
 curl -s http://127.0.0.1:9333/json/version
 ```
 
-Port 9222 is often occupied by Electron — prefer **9333**.
+Drop `--headless=new --disable-gpu` only when the user needs to log in interactively for the first time; switch back to headless for subsequent sessions. **Do not use `open -a "Google Chrome"`** — see Hard Rule #2.
+
+**Port convention:**
+- `9333` — agent's dedicated profile (`~/.chrome-debug-profile`). Default for this skill.
+- `9334+` — borrowed/scratch profiles (see "Borrowing an existing login" below).
+- Avoid `9222` (Electron collisions) and any port already documented by a project `CLAUDE.md`.
 
 **Get CDP port programmatically:**
 
@@ -116,6 +133,40 @@ agent-browser get cdp-url   # → ws://127.0.0.1:9333/devtools/browser/...
 ```
 
 **Diagnostics:** `bash ${SKILL_PATH}/scripts/check-deps.sh` → JSON with agent-browser, Node, CDP, proxy status.
+
+### Borrowing an existing login (when `~/.chrome-debug-profile` isn't logged in yet)
+
+Once the agent profile is logged into a site, it stays logged in — so this is a **one-time-per-site** recipe. Use it when you need to borrow a login from the user's **daily** Chrome profile (e.g., X/Twitter for Grok) instead of asking them to log in again inside the agent profile.
+
+**Chrome 136+ gotcha:** Chrome refuses to enable remote debugging on the real default `user-data-dir`:
+
+> DevTools remote debugging requires a non-default data directory. Specify this using --user-data-dir.
+
+You CANNOT point `--user-data-dir` at `$HOME/Library/Application Support/Google/Chrome` directly. You must operate on a **copy**.
+
+```bash
+# 1. Quit the daily Chrome (the Default profile is locked while it's running)
+# 2. Clone Default profile + Local State to a CDP-eligible path
+DEST="$HOME/.chrome-borrowed-profile"
+rsync -a --exclude='Singleton*' --exclude='*.lock' \
+  "$HOME/Library/Application Support/Google/Chrome/Default/" \
+  "$DEST/Default/"
+cp "$HOME/Library/Application Support/Google/Chrome/Local State" "$DEST/"
+
+# 3. Launch HEADLESS Chrome against the clone on a dedicated port
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
+  --headless=new --disable-gpu \
+  --remote-debugging-port=9334 '--remote-allow-origins=*' \
+  --user-data-dir="$DEST" --profile-directory=Default \
+  --no-first-run --no-default-browser-check 2>/dev/null &
+
+# 4. Connect via browser-connect.sh (uses a dedicated lock per port)
+RESULT=$(bash ${SKILL_PATH}/scripts/browser-connect.sh 9334)
+```
+
+**Caveat: cookies may not survive the clone.** `Local State` holds the OS-keychain-wrapped encryption key, and cookies are re-encrypted per-machine. In practice, session cookies for some sites (notably X/Twitter) fail to decrypt and the first navigation shows a logged-out page. If that happens, log in once inside the cloned profile — it persists from there.
+
+**After the one-time login**, prefer the dedicated agent profile on `9333` for all future work. Only use the borrowed-profile path for sites where cookie-clone survives.
 
 ---
 
@@ -333,6 +384,10 @@ Full API: `references/api.md`.
 | Symptom | Fix |
 |---------|-----|
 | `connect` fails | Chrome not running with debug port. See setup in Layer 0. |
+| `"DevTools remote debugging requires a non-default data directory"` | Chrome 136+ blocks CDP on the real default profile. Clone it — see "Borrowing an existing login". |
+| Multiple agents fighting over one Chrome | Someone bypassed `browser-connect.sh` or dispatched parallel browser subagents without Layer 2. Serialize, or route all through one CDP proxy. |
+| macOS focus stolen on every navigation | You launched Chrome via `open -a`. Use the direct binary path + `--headless=new`. |
+| Cookies still show logged-out after profile clone | OS-keychain re-encryption mismatch. Log in once inside the cloned profile — it persists. |
 | CAPTCHA unsolvable (exit 2) | `navigator.webdriver=true`. Switch to real Chrome. |
 | `webdriver=true` in CDP | Connected to Playwright/Electron. Use real Chrome. |
 | Proxy port 3456 in use | `CDP_PROXY_PORT=3457 node cdp-proxy.mjs &` |
